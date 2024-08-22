@@ -349,3 +349,31 @@ def search_prefix(datas, prefix):
         list(set([res[0] for res in searched if res[3]])),
         optimize_prefixes([res[0] for res in searched if not res[3]])
     )
+
+def normalize_prefix(prefix):
+    octets = prefix.split("/")[0].split(".")
+    prefix_net_bin = (int(octets[0]) << 24) | (int(octets[1]) << 16) | (int(octets[2]) << 8) | int(octets[3])
+    netmask = int(prefix.split("/")[1])
+    prefix_mask_bin = (0xffffffff - (1 << (32 - int(netmask))) + 1)
+    prefix_net_bin = (prefix_net_bin & prefix_mask_bin)
+    return str(int((prefix_net_bin >> 24) & 0x000000ff)) + "." + str(int((prefix_net_bin >> 16) & 0x000000ff)) + "." + str(int((prefix_net_bin >> 8) & 0x000000ff)) + "." + str(int(prefix_net_bin & 0x000000ff)) + "/" + str(netmask)
+
+def intersection(net_1, net_2):
+    ipv4_cidr_regex = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\/\d{1,3}$'
+    ipv4_regex = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+    if re.match(ipv4_regex, net_1):
+        net_1 += '/32'
+    if re.match(ipv4_regex, net_2):
+        net_2 += '/32'
+    if re.match(ipv4_cidr_regex, net_1) and re.match(ipv4_cidr_regex, net_2):
+        net_1_octets, net_1_mask = list(map(lambda x: int(x), net_1.split('/')[0].split('.'))), int(net_1.split('/')[1])
+        net_2_octets, net_2_mask = list(map(lambda x: int(x), net_2.split('/')[0].split('.'))), int(net_2.split('/')[1])
+        net_1_octets = net_1_octets[0] << 24 | net_1_octets[1] << 16 | net_1_octets[2] << 8 | net_1_octets[3]
+        net_2_octets = net_2_octets[0] << 24 | net_2_octets[1] << 16 | net_2_octets[2] << 8 | net_2_octets[3]
+        net_1_mask = 0xffffffff - (1 << (32 - net_1_mask)) + 1
+        net_2_mask = 0xffffffff - (1 << (32 - net_2_mask)) + 1
+        if net_1_octets & min(net_1_mask, net_2_mask) == net_2_octets & min(net_1_mask, net_2_mask):
+            return net_1 if net_1_mask > net_2_mask else net_2
+        else:
+            return None
+    return None
