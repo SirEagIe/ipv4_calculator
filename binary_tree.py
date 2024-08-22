@@ -186,9 +186,7 @@ class BinaryTree:
         address = address & prefix_mask_bin
         node = self
         result = []
-        print(netmask)
         for i in range(1, netmask + 1):
-            print([node.prefix, "{:032b}".format(node.address), node.netmask, node.data])
             if node.data:
                 result.append([node.prefix, "{:032b}".format(node.address), node.netmask, node.data])
             direction = ((address >> (32 - i)) & 0x1)
