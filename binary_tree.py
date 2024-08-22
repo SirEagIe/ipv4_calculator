@@ -375,3 +375,36 @@ def intersection(net_1, net_2):
         else:
             return None
     return None
+
+def substitution_prefixes(prefixes_1, prefixes_2):
+    prefixes_1 = optimize_prefixes(prefixes_1)
+    prefixes_2 = optimize_prefixes(prefixes_2)
+    ipv4_prefix_root = BinaryTree("0.0.0.0/0", "")
+    for prefix in prefixes_2:
+        ipv4_prefix_root.set_prefix_data(prefix, 1)
+    result = []
+    for prefix in prefixes_1:
+        result += ipv4_prefix_root.get_prefix_data4(prefix)
+    return [i[0] for i in result if not i[3]]
+
+def substitution_prefix(prefix_1, prefix_2):
+    ipv4_prefix_root = BinaryTree(prefix_1, "")
+    ipv4_prefix_root.set_prefix_data(prefix_2, 1)
+    result = ipv4_prefix_root.get_prefix_data4(prefix_1)
+    return [i[0] for i in result if not i[3]]
+    
+def division_prefix(prefix, new_netmask):
+    prefix = normalize_prefix(prefix)
+    ipv4_prefix_root = BinaryTree(prefix, "")
+    octets = prefix.split("/")[0].split(".")
+    address = (int(octets[0]) << 24) | (int(octets[1]) << 16) | (int(octets[2]) << 8) | int(octets[3])
+    netmask = int(prefix.split("/")[1])
+    if new_netmask < netmask:
+        return prefix
+    for _ in range(2 ** (new_netmask - netmask)):
+        ipv4_prefix_root.set_prefix_data(
+            normalize_prefix(str(int((address >> 24) & 0x000000ff)) + "." + str(int((address >> 16) & 0x000000ff)) + "." + str(int((address >> 8) & 0x000000ff)) + "." + str(int(address & 0x000000ff)) + "/" + str(new_netmask)), ''
+        )
+        address += 2 ** (32 - new_netmask)
+    result = ipv4_prefix_root.get_prefix_data4(prefix)
+    return [i[0] for i in result]
