@@ -48,7 +48,7 @@ class BinaryTree:
                     node = node.left
                 else:
                     node = node.right
-            node.data.append(data)
+            node.data += [data] if data else []
         else:
             raise Exception("Invalid prefix/prefix length: " + prefix + ". All host bits should be 0.")
 
@@ -216,7 +216,44 @@ class BinaryTree:
                 return []
             return res + get_subtree_data(node.left) + get_subtree_data(node.right)
         return(result + get_subtree_data(node))
-    
+
+
+    def get_leaf_under_prefix(self, prefix):
+        """
+        Производит поиск ноды в дереве по префиксу и возвращает данные о всех листьях ниже искомой ноды.
+        Формат возвращаемых данных:
+        [[префикс, адрес_в_двоичном_виде, длина_маски, [метка, ...]], ...]
+        """
+        if (prefix is None):
+            return None
+        netmask = int(prefix.split("/")[1])
+        octets = prefix.split("/")[0].split(".")     
+        address = (int(octets[0]) << 24) | (int(octets[1]) << 16) | (int(octets[2]) << 8) | int(octets[3])
+        prefix_mask_bin = (0xffffffff - (1 << (32 - int(netmask))) + 1)
+        address = address & prefix_mask_bin
+        node = self
+        for i in range(1, netmask + 1):
+            direction = ((address >> (32 - i)) & 0x1)
+            if (direction == 0):
+                if node.left is None:
+                    break
+                else:
+                    node = node.left
+            else:
+                if node.right is None:
+                    break
+                else:
+                    node = node.right
+
+        def get_subtree_data(node):
+            res = []
+            if not node:
+                return []
+            if not node.left and not node.right:
+                res.append([node.prefix, "{:032b}".format(node.address), node.netmask, node.data])
+            return res + get_subtree_data(node.left) + get_subtree_data(node.right)
+        return(get_subtree_data(node))
+
 
     def check_subtree_data(self):
         root = self
@@ -230,7 +267,7 @@ class BinaryTree:
         while len(queue) > 0:
             cur_node = queue.pop(0)
             if (cur_node.data != ""):
-                print("  Prefix " + root.prefix + " overlaps with prefix " + cur_node.prefix)
+                # print("  Prefix " + root.prefix + " overlaps with prefix " + cur_node.prefix)
                 return (1)
             else:
                 if cur_node.left is not None:
@@ -253,7 +290,7 @@ class BinaryTree:
                 if cur_node.right is not None:
                     queue.append(cur_node.right)
                     if cur_node.right.data == "": cur_node.right.data = cur_node.data
-                print("  Splitting prefix: " + str(cur_node.prefix) + " into prefixes: " + str(cur_node.left.prefix) + ", " + str(cur_node.right.prefix) + " with data \"" + str(cur_node.data) + "\"")
+                # print("  Splitting prefix: " + str(cur_node.prefix) + " into prefixes: " + str(cur_node.left.prefix) + ", " + str(cur_node.right.prefix) + " with data \"" + str(cur_node.data) + "\"")
                 cur_node.data = ""
             else:
                 if cur_node.left is not None:
@@ -274,7 +311,7 @@ class BinaryTree:
         if ((node.left is not None) and (node.right is not None)):
             if ((node.left.data != "") and (node.left.data == node.right.data) and (node.data == "")):
                 node.data = node.left.data
-                print("  Combining prefixes: "  + str(node.left.prefix) + ", " + str(node.right.prefix) + " into prefix: " + str(node.prefix) + " with data \"" + str(node.data) + "\"")
+                # print("  Combining prefixes: "  + str(node.left.prefix) + ", " + str(node.right.prefix) + " into prefix: " + str(node.prefix) + " with data \"" + str(node.data) + "\"")
                 node.left.data = ""
                 node.right.data = ""
         self.aggregate_data2(node.right)
@@ -342,6 +379,7 @@ def search_prefix(datas, prefix):
             datas_result += res[3]
     datas_result = list(set(datas_result))
 
+    # 3-е значение неправильное
     return (
         datas_result,
         list(set([res[0] for res in searched if res[3]])),
@@ -377,25 +415,36 @@ def intersection(net_1, net_2):
     return None
 
 def substitution_prefixes(prefixes_1, prefixes_2):
-    prefixes_1 = optimize_prefixes(prefixes_1)
-    prefixes_2 = optimize_prefixes(prefixes_2)
-    ipv4_prefix_root = BinaryTree("0.0.0.0/0", "")
-    for prefix in prefixes_2:
-        ipv4_prefix_root.set_prefix_data(prefix, 1)
+    ipv4_prefix_root = BinaryTree('0.0.0.0/0', "")
+    for prefix_1 in prefixes_1:
+        ipv4_prefix_root.set_prefix_data(prefix_1, "")
+    for prefix_2 in prefixes_2:
+        ipv4_prefix_root.set_prefix_data(prefix_2, 1)
+    def clear_subtree_data(node):
+        if node.data == [1]:
+            node.left = None
+            node.right = None
+        if node.left:
+            clear_subtree_data(node.left)
+        if node.right:
+            clear_subtree_data(node.right)
+    clear_subtree_data(ipv4_prefix_root)
     result = []
-    for prefix in prefixes_1:
-        result += ipv4_prefix_root.get_prefix_data4(prefix)
+    for prefix_1 in prefixes_1:
+        result += ipv4_prefix_root.get_leaf_under_prefix(prefix_1)
     return [i[0] for i in result if not i[3]]
 
 def substitution_prefix(prefix_1, prefix_2):
-    ipv4_prefix_root = BinaryTree(prefix_1, "")
+    ipv4_prefix_root = BinaryTree('0.0.0.0/0', "")
+    ipv4_prefix_root.set_prefix_data(prefix_1, "")
     ipv4_prefix_root.set_prefix_data(prefix_2, 1)
-    result = ipv4_prefix_root.get_prefix_data4(prefix_1)
+    result = ipv4_prefix_root.get_leaf_under_prefix(prefix_1)
     return [i[0] for i in result if not i[3]]
     
 def division_prefix(prefix, new_netmask):
     prefix = normalize_prefix(prefix)
-    ipv4_prefix_root = BinaryTree(prefix, "")
+    ipv4_prefix_root = BinaryTree('0.0.0.0/0', '')
+    ipv4_prefix_root.set_prefix_data(prefix, '')
     octets = prefix.split("/")[0].split(".")
     address = (int(octets[0]) << 24) | (int(octets[1]) << 16) | (int(octets[2]) << 8) | int(octets[3])
     netmask = int(prefix.split("/")[1])
@@ -406,5 +455,5 @@ def division_prefix(prefix, new_netmask):
             normalize_prefix(str(int((address >> 24) & 0x000000ff)) + "." + str(int((address >> 16) & 0x000000ff)) + "." + str(int((address >> 8) & 0x000000ff)) + "." + str(int(address & 0x000000ff)) + "/" + str(new_netmask)), ''
         )
         address += 2 ** (32 - new_netmask)
-    result = ipv4_prefix_root.get_prefix_data4(prefix)
+    result = ipv4_prefix_root.get_leaf_under_prefix(prefix)
     return [i[0] for i in result]
