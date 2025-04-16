@@ -421,7 +421,7 @@ def substitution_prefixes(prefixes_1, prefixes_2):
     for prefix_2 in prefixes_2:
         ipv4_prefix_root.set_prefix_data(prefix_2, 1)
     def clear_subtree_data(node):
-        if node.data == [1]:
+        if node.data:
             node.left = None
             node.right = None
         if node.left:
@@ -439,7 +439,7 @@ def substitution_prefix(prefix_1, prefix_2):
     ipv4_prefix_root.set_prefix_data(prefix_1, "")
     ipv4_prefix_root.set_prefix_data(prefix_2, 1)
     def clear_subtree_data(node):
-        if node.data == [1]:
+        if node.data:
             node.left = None
             node.right = None
         if node.left:
