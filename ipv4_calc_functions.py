@@ -438,6 +438,15 @@ def substitution_prefix(prefix_1, prefix_2):
     ipv4_prefix_root = BinaryTree('0.0.0.0/0', "")
     ipv4_prefix_root.set_prefix_data(prefix_1, "")
     ipv4_prefix_root.set_prefix_data(prefix_2, 1)
+    def clear_subtree_data(node):
+        if node.data == [1]:
+            node.left = None
+            node.right = None
+        if node.left:
+            clear_subtree_data(node.left)
+        if node.right:
+            clear_subtree_data(node.right)
+    clear_subtree_data(ipv4_prefix_root)
     result = ipv4_prefix_root.get_leaf_under_prefix(prefix_1)
     return [i[0] for i in result if not i[3]]
     
